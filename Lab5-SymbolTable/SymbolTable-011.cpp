@@ -1,231 +1,214 @@
-// https://www.geeksforgeeks.org/cpp-program-to-implement-symbol-table/
-//C++ implementation of Symbol Table using the concept of Hashing with separate chaining
-#include <iostream> 
-using namespace std; 
+// C++ implementation of Symbol Table using the concept of Hashing with separate chaining
+#include <iostream> // Include input/output stream library
+using namespace std; // Using the standard namespace
 
-const int MAX = 100; 
+const int MAX = 100; // Maximum size of the symbol table
 
-class Node { 
+// Class representing a node in the symbol table
+class Node {
+    string identifier, scope, type; // Properties of the identifier
+    int lineNo; // Line number where the identifier is found
+    Node* next; // Pointer to the next node in case of collision
 
-	string identifier, scope, type; 
-	int lineNo; 
-	Node* next; 
+public:
+    Node() {
+        next = NULL; // Constructor to initialize next pointer to NULL
+    }
 
-public: 
-	Node() 
-	{ 
-		next = NULL; 
-	} 
+    // Constructor to initialize properties of the node
+    Node(string key, string value, string type, int lineNo) {
+        this->identifier = key;
+        this->scope = value;
+        this->type = type;
+        this->lineNo = lineNo;
+        next = NULL;
+    }
 
-	Node(string key, string value, string type, int lineNo) 
-	{ 
-		this->identifier = key; 
-		this->scope = value; 
-		this->type = type; 
-		this->lineNo = lineNo; 
-		next = NULL; 
-	} 
+    // Function to print the details of the identifier
+    void print() {
+        cout << "Identifier's Name:" << identifier
+            << "\nType:" << type
+            << "\nScope: " << scope
+            << "\nLine Number: " << lineNo << endl;
+    }
+    friend class SymbolTable; // Allowing SymbolTable class to access private members
+};
 
-	void print() 
-	{ 
-		cout << "Identifier's Name:" << identifier 
-			<< "\nType:" << type 
-			<< "\nScope: " << scope 
-			<< "\nLine Number: " << lineNo << endl; 
-	} 
-	friend class SymbolTable; 
-}; 
+// Class representing the symbol table
+class SymbolTable {
+    Node* head[MAX]; // Array of pointers to nodes (buckets) for separate chaining
 
-class SymbolTable { 
-	Node* head[MAX]; 
+public:
+    SymbolTable() {
+        for (int i = 0; i < MAX; i++)
+            head[i] = NULL; // Initialize all buckets to NULL
+    }
 
-public: 
-	SymbolTable() 
-	{ 
-		for (int i = 0; i < MAX; i++) 
-			head[i] = NULL; 
-	} 
+    int hashf(string id); // Declaration of hash function
+    bool insert(string id, string scope, string Type, int lineno); // Function to insert an identifier
+    string find(string id); // Function to find an identifier
+    bool deleteRecord(string id); // Function to delete an identifier
+    bool modify(string id, string scope, string Type, int lineno); // Function to modify an identifier
+};
 
-	int hashf(string id); // hash function 
-	bool insert(string id, string scope, 
-				string Type, int lineno); 
+// Function to modify an identifier
+bool SymbolTable::modify(string id, string s, string t, int l) {
+    int index = hashf(id); // Compute the hash value of the identifier
+    Node* start = head[index]; // Get the starting node of the bucket
 
-	string find(string id); 
+    if (start == NULL)
+        return false; // Return false if the bucket is empty
 
-	bool deleteRecord(string id); 
+    while (start != NULL) { // Iterate through the linked list in the bucket
+        if (start->identifier == id) { // If the identifier is found
+            start->scope = s; // Update its scope
+            start->type = t; // Update its type
+            start->lineNo = l; // Update its line number
+            return true; // Return true indicating successful modification
+        }
+        start = start->next; // Move to the next node in the linked list
+    }
 
-	bool modify(string id, string scope, 
-				string Type, int lineno); 
-}; 
+    return false; // Return false if the identifier is not found
+}
 
-// Function to modify an identifier 
-bool SymbolTable::modify(string id, string s, 
-						string t, int l) 
-{ 
-	int index = hashf(id); 
-	Node* start = head[index]; 
+// Function to delete an identifier
+bool SymbolTable::deleteRecord(string id) {
+    int index = hashf(id); // Compute the hash value of the identifier
+    Node* tmp = head[index]; // Get the starting node of the bucket
+    Node* par = head[index]; // Pointer to keep track of the previous node
 
-	if (start == NULL) 
-		return "-1"; 
+    // Case when no identifier is present at that index
+    if (tmp == NULL) {
+        return false;
+    }
 
-	while (start != NULL) { 
-		if (start->identifier == id) { 
-			start->scope = s; 
-			start->type = t; 
-			start->lineNo = l; 
-			return true; 
-		} 
-		start = start->next; 
-	} 
+    // Case when only one identifier is present
+    if (tmp->identifier == id && tmp->next == NULL) {
+        tmp->next = NULL;
+        delete tmp; // Delete the node
+        return true;
+    }
 
-	return false; // id not found 
-} 
+    // Case when identifier is present but not at the head of the linked list
+    while (tmp->identifier != id && tmp->next != NULL) {
+        par = tmp; // Update previous node
+        tmp = tmp->next; // Move to the next node
+    }
+    if (tmp->identifier == id && tmp->next != NULL) {
+        par->next = tmp->next;
+        tmp->next = NULL;
+        delete tmp; // Delete the node
+        return true;
+    }
 
-// Function to delete an identifier 
-bool SymbolTable::deleteRecord(string id) 
-{ 
-	int index = hashf(id); 
-	Node* tmp = head[index]; 
-	Node* par = head[index]; 
+    // Case when identifier is present at the end of the linked list
+    else {
+        par->next = NULL;
+        tmp->next = NULL;
+        delete tmp; // Delete the node
+        return true;
+    }
+    return false;
+}
 
-	// no identifier is present at that index 
-	if (tmp == NULL) { 
-		return false; 
-	} 
-	// only one identifier is present 
-	if (tmp->identifier == id && tmp->next == NULL) { 
-		tmp->next = NULL; 
-		delete tmp; 
-		return true; 
-	} 
+// Function to find an identifier
+string SymbolTable::find(string id) {
+    int index = hashf(id); // Compute the hash value of the identifier
+    Node* start = head[index]; // Get the starting node of the bucket
 
-	while (tmp->identifier != id && tmp->next != NULL) { 
-		par = tmp; 
-		tmp = tmp->next; 
-	} 
-	if (tmp->identifier == id && tmp->next != NULL) { 
-		par->next = tmp->next; 
-		tmp->next = NULL; 
-		delete tmp; 
-		return true; 
-	} 
+    if (start == NULL)
+        return "-1"; // Return -1 if the bucket is empty
 
-	// delete at the end 
-	else { 
-		par->next = NULL; 
-		tmp->next = NULL; 
-		delete tmp; 
-		return true; 
-	} 
-	return false; 
-} 
+    while (start != NULL) { // Iterate through the linked list in the bucket
 
-// Function to find an identifier 
-string SymbolTable::find(string id) 
-{ 
-	int index = hashf(id); 
-	Node* start = head[index]; 
+        if (start->identifier == id) { // If the identifier is found
+            start->print(); // Print its details
+            return start->scope; // Return its scope
+        }
 
-	if (start == NULL) 
-		return "-1"; 
+        start = start->next; // Move to the next node in the linked list
+    }
 
-	while (start != NULL) { 
+    return "-1"; // Return -1 if the identifier is not found
+}
 
-		if (start->identifier == id) { 
-			start->print(); 
-			return start->scope; 
-		} 
+// Function to insert an identifier
+bool SymbolTable::insert(string id, string scope, string Type, int lineno) {
+    int index = hashf(id); // Compute the hash value of the identifier
+    Node* p = new Node(id, scope, Type, lineno); // Create a new node with the given properties
 
-		start = start->next; 
-	} 
+    if (head[index] == NULL) { // If the bucket is empty
+        head[index] = p; // Set the new node as the head of the bucket
+        cout << "\n" << id << " inserted"; // Print a message indicating successful insertion
+        return true;
+    }
 
-	return "-1"; // not found 
-} 
+    else { // If the bucket is not empty
+        Node* start = head[index]; // Get the starting node of the bucket
+        while (start->next != NULL)
+            start = start->next; // Traverse the linked list to the end
 
-// Function to insert an identifier 
-bool SymbolTable::insert(string id, string scope, 
-						string Type, int lineno) 
-{ 
-	int index = hashf(id); 
-	Node* p = new Node(id, scope, Type, lineno); 
+        start->next = p; // Insert the new node at the end of the linked list
+        cout << "\n" << id << " inserted"; // Print a message indicating successful insertion
+        return true;
+    }
 
-	if (head[index] == NULL) { 
-		head[index] = p; 
-		cout << "\n"
-			<< id << " inserted"; 
+    return false;
+}
 
-		return true; 
-	} 
+// Function to compute the hash value of an identifier
+int SymbolTable::hashf(string id) {
+    int asciiSum = 0; // Variable to store the sum of ASCII values of characters in the identifier
 
-	else { 
-		Node* start = head[index]; 
-		while (start->next != NULL) 
-			start = start->next; 
+    for (int i = 0; i < id.length(); i++) { // Iterate through each character of the identifier
+        asciiSum = asciiSum + id[i]; // Add the ASCII value of the character to the sum
+    }
 
-		start->next = p; 
-		cout << "\n"
-			<< id << " inserted"; 
+    return (asciiSum % 100); // Return the remainder when the sum is divided by 100 (hash value)
+}
 
-		return true; 
-	} 
+// Driver code
+int main() {
+    SymbolTable st; // Create an instance of SymbolTable class
+    string check; // Variable to store the result of find operation
+    cout << "**** SYMBOL_TABLE ****\n"; // Print a header indicating the symbol table
 
-	return false; 
-} 
+    // Insert 'if' into the symbol table
+    if (st.insert("if", "local", "keyword", 4))
+        cout << " -successfully"; // Print a message indicating successful insertion
+    else
+        cout << "\nFailed to insert.\n"; // Print a message indicating failed insertion
 
-int SymbolTable::hashf(string id) 
-{ 
-	int asciiSum = 0; 
+    // Insert 'number' into the symbol table
+    if (st.insert("number", "global", "variable", 2))
+        cout << " -successfully\n\n"; // Print a message indicating successful insertion
+    else
+        cout << "\nFailed to insert\n"; // Print a message indicating failed insertion
 
-	for (int i = 0; i < id.length(); i++) { 
-		asciiSum = asciiSum + id[i]; 
-	} 
+    // Find 'if' in the symbol table
+    check = st.find("if");
+    if (check != "-1")
+        cout << "Identifier Is present\n"; // Print a message indicating 'if' is present
+    else
+        cout << "\nIdentifier Not Present\n"; // Print a message indicating 'if' is not present
 
-	return (asciiSum % 100); 
-} 
+    // Delete 'if' from the symbol table
+    if (st.deleteRecord("if"))
+        cout << "if Identifier is deleted\n"; // Print a message indicating successful deletion
+    else
+        cout << "\nFailed to delete\n"; // Print a message indicating failed deletion
 
-// Driver code 
-int main() 
-{ 
-	SymbolTable st; 
-	string check; 
-	cout << "**** SYMBOL_TABLE ****\n"; 
+    // Modify 'number' in the symbol table
+    if (st.modify("number", "global", "variable", 3))
+        cout << "\nNumber Identifier updated\n"; // Print a message indicating successful modification
 
-	// insert 'if' 
-	if (st.insert("if", "local", "keyword", 4)) 
-		cout << " -successfully"; 
-	else
-		cout << "\nFailed to insert.\n"; 
+    // Find and print 'number' from the symbol table
+    check = st.find("number");
+    if (check != "-1")
+        cout << "Identifier Is present\n"; // Print a message indicating 'number' is present
+    else
+        cout << "\nIdentifier Not Present"; // Print a message indicating 'number' is not present
 
-	// insert 'number' 
-	if (st.insert("number", "global", "variable", 2)) 
-		cout << " -successfully\n\n"; 
-	else
-		cout << "\nFailed to insert\n"; 
-
-	// find 'if' 
-	check = st.find("if"); 
-	if (check != "-1") 
-		cout << "Identifier Is present\n"; 
-	else
-		cout << "\nIdentifier Not Present\n"; 
-
-	// delete 'if' 
-	if (st.deleteRecord("if")) 
-		cout << "if Identifier is deleted\n"; 
-	else
-		cout << "\nFailed to delete\n"; 
-
-	// modify 'number' 
-	if (st.modify("number", "global", "variable", 3)) 
-		cout << "\nNumber Identifier updated\n"; 
-
-	// find and print 'number' 
-	check = st.find("number"); 
-	if (check != "-1") 
-		cout << "Identifier Is present\n"; 
-	else
-		cout << "\nIdentifier Not Present"; 
-
-	return 0; 
-} 
-
+    return 0; // Exit the program
+}
